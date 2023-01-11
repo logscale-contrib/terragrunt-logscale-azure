@@ -15,7 +15,7 @@ locals {
   }
   k8s = {
     base_url = "git::git@github.com:logscale-contrib/teraform-self-managed-logscale-azure-aks.git"
-    version  = "?ref=v1.4.3"
+    version  = "?ref=v1.4.4"
   }
   # vpc = {
   #   base_url = "tfr:///terraform-aws-modules/vpc/aws"

@@ -17,62 +17,55 @@ terraform {
 # Locals are named constants that are reusable within the configuration.
 # ---------------------------------------------------------------------------------------------------------------------
 locals {
+  # Automatically load modules variables
+  module_vars   = read_terragrunt_config(find_in_parent_folders("modules.hcl"))
+  source_module = local.module_vars.locals.helm_release
+
   # Automatically load environment-level variables
   environment_vars = read_terragrunt_config(find_in_parent_folders("env.hcl"))
 
   # Extract out common variables for reuse
-  env = local.environment_vars.locals.environment
+  env          = local.environment_vars.locals.environment
+  location_ops = local.environment_vars.locals.location_ops
 
-  # Expose the base source URL so different versions of the module can be deployed in different environments. This will
-  # be used to construct the terraform block in the child terragrunt configurations.
-  module_vars   = read_terragrunt_config(find_in_parent_folders("modules.hcl"))
-  source_module = local.module_vars.locals.helm_release
-
-  # Automatically load account-level variables
-  account_vars = read_terragrunt_config(find_in_parent_folders("account.hcl"))
-
-  # Automatically load region-level variables
-  region_vars = read_terragrunt_config(find_in_parent_folders("region.hcl"))
-
-  # Automatically load region-level variables
-  admin = read_terragrunt_config(find_in_parent_folders("admin.hcl"))
-
-  # Extract the variables we need for easy access
-  account_name = local.account_vars.locals.account_name
-  account_id   = local.account_vars.locals.aws_account_id
-  aws_region   = local.region_vars.locals.aws_region
+  tag_vars = read_terragrunt_config(find_in_parent_folders("tags.hcl"))
+  tags = merge(
+    local.tag_vars.locals.tags,
+    {
+      Environment   = local.env
+      GitRepository = run_cmd("sh", "-c", "git config --get remote.origin.url")
+      Role          = "ops"
+    },
+  )
 
 }
 
-dependency "eks" {
-  config_path = "${get_terragrunt_dir()}/../../aws/infra/eks/"
+dependency "rg_ops" {
+  config_path = "${get_terragrunt_dir()}/../../infra/resourcegroup-ops/"
 }
-dependency "acm_ui" {
-  config_path = "${get_terragrunt_dir()}/../../aws/infra/acm-ui/"
+dependency "k8s_ops" {
+  config_path = "${get_terragrunt_dir()}/../../k8s-ops/"
+}
+dependency "ns" {
+  config_path = "${get_terragrunt_dir()}/../k8s-ns-monitoring/"
+  skip_outputs = true
+}
+dependency "cert_manager" {
+  config_path = "${get_terragrunt_dir()}/../k8s-cert-manager/"
+  skip_outputs = true
 }
 
-dependencies {
-  paths = [
-    # "${get_terragrunt_dir()}/../k8s-linkerd-cp",
-    "${get_terragrunt_dir()}/../k8s-ns-monitoring"
-  ]
-}
 generate "provider" {
   path      = "provider_k8s.tf"
   if_exists = "overwrite_terragrunt"
   contents  = <<EOF
-  
+
 provider "helm" {
   kubernetes {
-    host                   = "${dependency.eks.outputs.eks_endpoint}"
-    cluster_ca_certificate = base64decode("${dependency.eks.outputs.eks_cluster_certificate_authority_data}")
-
-    exec {
-      api_version = "client.authentication.k8s.io/v1"
-      command     = "aws"
-      # This requires the awscli to be installed locally where Terraform is executed
-      args = ["eks", "get-token", "--cluster-name", "logscale-${local.env}"]
-    }
+  host              = "${dependency.k8s_ops.outputs.admin_host}"
+  client_certificate     = base64decode("${dependency.k8s_ops.outputs.admin_client_certificate}")
+  client_key             = base64decode("${dependency.k8s_ops.outputs.admin_client_key}")
+  cluster_ca_certificate = base64decode("${dependency.k8s_ops.outputs.admin_cluster_ca_certificate}")
   }
 }
 EOF
@@ -104,7 +97,7 @@ inputs = {
     }
     alertmanagerSpec = {
       storage = {
-        storageClassName = "ebs-gp3-noenc"
+        storageClassName = "managed-csi"
         accessModes      = ["ReadWriteOnce"]
         resources = {
           requests = {
@@ -115,7 +108,7 @@ inputs = {
     }
     prometheusSpec = {
       storage = {
-        storageClassName = "ebs-gp3-noenc"
+        storageClassName = "managed-csi"
         accessModes      = ["ReadWriteOnce"]
         resources = {
           requests = {
@@ -123,51 +116,11 @@ inputs = {
           }
         }
       }
-      additionalServiceMonitors = [
-        {
-          name     = "linkerd-federate"
-          jobLabel = "app"
-          #targetLabels = 
-          selector = {
-            matchLabels = {
-              component = "prometheus"
-            }
-          }
-          namespaceSelector = {
-            matchNames = [
-              "linkerd-viz"
-            ]
-          }
-          endpoints = [
-            {
-              interval      = "30s"
-              scrapeTimeout = "30s"
-              params = {
-                "match[]" = [
-                  "{job=\"linkerd-proxy\"}",
-                  "{job=\"linkerd-controller\"}"
-                ]
-              }
-              path        = "/federate"
-              port        = "admin-http"
-              honorLabels = true
-              relabelings : [
-                {
-                  action = "keep"
-                  regex  = "^prometheus$"
-                  sourceLabels = [
-                    "__meta_kubernetes_pod_container_name"
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
+
     }
     thanosRulerSpec = {
       storage = {
-        storageClassName = "ebs-gp3-noenc"
+        storageClassName = "managed-csi"
         accessModes      = ["ReadWriteOnce"]
         resources = {
           requests = {

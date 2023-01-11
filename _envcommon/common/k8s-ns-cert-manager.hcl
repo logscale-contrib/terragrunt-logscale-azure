@@ -1,3 +1,4 @@
+
 # ---------------------------------------------------------------------------------------------------------------------
 # COMMON TERRAGRUNT CONFIGURATION
 # This is the common component configuration for mysql. The common variables for each environment to
@@ -12,14 +13,13 @@
 terraform {
   source = "${local.source_module.base_url}${local.source_module.version}"
 }
-
 # ---------------------------------------------------------------------------------------------------------------------
 # Locals are named constants that are reusable within the configuration.
 # ---------------------------------------------------------------------------------------------------------------------
 locals {
   # Automatically load modules variables
   module_vars   = read_terragrunt_config(find_in_parent_folders("modules.hcl"))
-  source_module = local.module_vars.locals.helm_release
+  source_module = local.module_vars.locals.k8s_ns
 
   # Automatically load environment-level variables
   environment_vars = read_terragrunt_config(find_in_parent_folders("env.hcl"))
@@ -46,29 +46,38 @@ dependency "rg_ops" {
 dependency "k8s_ops" {
   config_path = "${get_terragrunt_dir()}/../../k8s-ops/"
 }
-dependency "cert_manager" {
-  config_path = "${get_terragrunt_dir()}/../k8s-cert-manager/"
-  skip_outputs = true
-}
-
-dependency "operator-monitoring" {
-  config_path = "${get_terragrunt_dir()}/../k8s-operator-monitoring/"
-  skip_outputs = true
-}
 
 generate "provider" {
   path      = "provider_k8s.tf"
   if_exists = "overwrite_terragrunt"
   contents  = <<EOF
 
-provider "helm" {
-  kubernetes {
+# provider "kubectl" {
+
+#   apply_retry_count = 10
+#   host              = "${dependency.k8s_ops.outputs.admin_host}"
+#   client_certificate     = base64decode("${dependency.k8s_ops.outputs.admin_client_certificate}")
+#   client_key             = base64decode("${dependency.k8s_ops.outputs.admin_client_key}")
+#   cluster_ca_certificate = base64decode("${dependency.k8s_ops.outputs.admin_cluster_ca_certificate}")
+
+#   load_config_file = false
+# }
+
+provider "kubernetes" {
   host              = "${dependency.k8s_ops.outputs.admin_host}"
   client_certificate     = base64decode("${dependency.k8s_ops.outputs.admin_client_certificate}")
   client_key             = base64decode("${dependency.k8s_ops.outputs.admin_client_key}")
   cluster_ca_certificate = base64decode("${dependency.k8s_ops.outputs.admin_cluster_ca_certificate}")
-  }
 }
+
+# provider "helm" {
+#   kubernetes {
+#   host              = "${dependency.k8s_ops.outputs.admin_host}"
+#   client_certificate     = base64decode("${dependency.k8s_ops.outputs.admin_client_certificate}")
+#   client_key             = base64decode("${dependency.k8s_ops.outputs.admin_client_key}")
+#   cluster_ca_certificate = base64decode("${dependency.k8s_ops.outputs.admin_cluster_ca_certificate}")
+#   }
+# }
 EOF
 }
 # ---------------------------------------------------------------------------------------------------------------------
@@ -77,48 +86,8 @@ EOF
 # environments.
 # ---------------------------------------------------------------------------------------------------------------------
 inputs = {
-
-
-  repository = "https://open-telemetry.github.io/opentelemetry-helm-charts"
-  namespace  = "otel-operator"
-
-  app = {
-    chart            = "opentelemetry-operator"
-    name             = "cwotel"
-    version          = "0.20.*"
-    create_namespace = false
-    deploy           = 1
+  name = "cert-manager"
+  annotations = {
+    "linkerd.io/inject" = "disabled"
   }
-
-  values = [<<YAML
-
-replicaCount: 2
-manager:
-#   ports:
-#     webhookPort: 8443  
-  serviceMonitor:
-    enabled: true
-#   env:
-#     ENABLE_WEBHOOKS: "true"    
-# admissionWebhooks:
-#   certManager: 
-#     enabled: false
-#   create: false   
-  resources:
-    limits:
-      cpu: 100m
-      memory: 128Mi
-    requests:
-      cpu: 100m
-      memory: 128Mi
-kubeRBACProxy:
-  resources:
-    limits:
-      cpu: 500m
-      memory: 128Mi
-    requests:
-      cpu: 500m
-      memory: 128Mi
-YAML
-  ]
 }

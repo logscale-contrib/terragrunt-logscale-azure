@@ -46,16 +46,10 @@ dependency "rg_ops" {
 dependency "k8s_ops" {
   config_path = "${get_terragrunt_dir()}/../../k8s-ops/"
 }
-dependency "cert_manager" {
-  config_path = "${get_terragrunt_dir()}/../k8s-cert-manager/"
+dependency "ns" {
+  config_path = "${get_terragrunt_dir()}/../k8s-ns-cert-manager/"
   skip_outputs = true
 }
-
-dependency "operator-monitoring" {
-  config_path = "${get_terragrunt_dir()}/../k8s-operator-monitoring/"
-  skip_outputs = true
-}
-
 generate "provider" {
   path      = "provider_k8s.tf"
   if_exists = "overwrite_terragrunt"
@@ -79,46 +73,19 @@ EOF
 inputs = {
 
 
-  repository = "https://open-telemetry.github.io/opentelemetry-helm-charts"
-  namespace  = "otel-operator"
+  repository = "https://charts.appscode.com/stable/"
+  namespace  = "kube-system"
 
   app = {
-    chart            = "opentelemetry-operator"
-    name             = "cwotel"
-    version          = "0.20.*"
+    chart            = "prometheus-operator-crds"
+    name             = "prom-crds"
+    version          = "0.60.1"
     create_namespace = false
     deploy           = 1
   }
 
   values = [<<YAML
-
-replicaCount: 2
-manager:
-#   ports:
-#     webhookPort: 8443  
-  serviceMonitor:
-    enabled: true
-#   env:
-#     ENABLE_WEBHOOKS: "true"    
-# admissionWebhooks:
-#   certManager: 
-#     enabled: false
-#   create: false   
-  resources:
-    limits:
-      cpu: 100m
-      memory: 128Mi
-    requests:
-      cpu: 100m
-      memory: 128Mi
-kubeRBACProxy:
-  resources:
-    limits:
-      cpu: 500m
-      memory: 128Mi
-    requests:
-      cpu: 500m
-      memory: 128Mi
+installCRDs: true
 YAML
   ]
 }
