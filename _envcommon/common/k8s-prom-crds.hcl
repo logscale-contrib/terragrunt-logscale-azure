@@ -47,7 +47,7 @@ dependency "k8s_ops" {
   config_path = "${get_terragrunt_dir()}/../../k8s-ops/"
 }
 dependency "ns" {
-  config_path = "${get_terragrunt_dir()}/../k8s-ns-cert-manager/"
+  config_path  = "${get_terragrunt_dir()}/../k8s-ns-cert-manager/"
   skip_outputs = true
 }
 generate "provider" {

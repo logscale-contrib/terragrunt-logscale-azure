@@ -66,6 +66,6 @@ inputs = {
   prefix                 = "logscale-ops-${local.env}"
   disk_encryption_set_id = dependency.vault_ops.outputs.disk_encryption_set_id
   agent_size             = "standard_d2s_v5"
-
-  tags = local.tags
+  agent_size_logscale    = "Standard_L8as_v3"
+  tags                   = local.tags
 }

@@ -47,13 +47,13 @@ dependency "k8s_ops" {
   config_path = "${get_terragrunt_dir()}/../../k8s-ops/"
 }
 dependency "ns" {
-  config_path = "${get_terragrunt_dir()}/../k8s-ns-cert-manager/"
+  config_path  = "${get_terragrunt_dir()}/../k8s-ns-cert-manager/"
   skip_outputs = true
 }
 dependency "operator-monitoring" {
-  config_path = "${get_terragrunt_dir()}/../k8s-prom-crds/"
+  config_path  = "${get_terragrunt_dir()}/../k8s-prom-crds/"
   skip_outputs = true
-} 
+}
 generate "provider" {
   path      = "provider_k8s.tf"
   if_exists = "overwrite_terragrunt"

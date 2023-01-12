@@ -47,12 +47,12 @@ dependency "k8s_ops" {
   config_path = "${get_terragrunt_dir()}/../../k8s-ops/"
 }
 dependency "cert_manager" {
-  config_path = "${get_terragrunt_dir()}/../k8s-cert-manager/"
+  config_path  = "${get_terragrunt_dir()}/../k8s-cert-manager/"
   skip_outputs = true
 }
 
 dependency "operator-monitoring" {
-  config_path = "${get_terragrunt_dir()}/../k8s-operator-monitoring/"
+  config_path  = "${get_terragrunt_dir()}/../k8s-operator-monitoring/"
   skip_outputs = true
 }
 
