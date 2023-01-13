@@ -54,7 +54,7 @@ dependency "rg_ops" {
 # environments.
 # ---------------------------------------------------------------------------------------------------------------------
 inputs = {
-  name     = "logscale-ops-${local.env}-edns@logsrlife.onmicrosoft.com"
+  name = "logscale-ops-${local.env}-edns@logsrlife.onmicrosoft.com"
 
   # Adding roles and scope to service principal
   assignments = [

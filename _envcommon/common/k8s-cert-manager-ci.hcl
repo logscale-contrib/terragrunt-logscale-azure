@@ -37,11 +37,8 @@ locals {
       Role          = "ops"
     },
   )
-
   dns         = read_terragrunt_config(find_in_parent_folders("dns.hcl"))
-  domain_name = local.dns.locals.domain_name
-
-  host_name = "argocd"
+  admin_email = local.dns.locals.admin_email
 
 }
 
@@ -51,12 +48,13 @@ dependency "rg_ops" {
 dependency "k8s_ops" {
   config_path = "${get_terragrunt_dir()}/../../k8s-ops/"
 }
-dependency "ns" {
-  config_path  = "${get_terragrunt_dir()}/../k8s-ns-argocd/"
-  skip_outputs = true
-}
+
 dependency "operator-monitoring" {
   config_path  = "${get_terragrunt_dir()}/../k8s-prom-crds/"
+  skip_outputs = true
+}
+dependency "cm" {
+  config_path  = "${get_terragrunt_dir()}/../k8s-cert-manager/"
   skip_outputs = true
 }
 generate "provider" {
@@ -80,61 +78,22 @@ EOF
 # environments.
 # ---------------------------------------------------------------------------------------------------------------------
 inputs = {
-  namespace  = "argocd"
-  repository = "https://argoproj.github.io/argo-helm"
+
+
+  repository = "https://logscale-contrib.github.io/helm-cert-manager-letsencrypt"
+  namespace  = "cert-manager"
 
   app = {
-    name             = "cw"
-    create_namespace = true
-
-    chart   = "argo-cd"
-    version = "5.16.1"
-
-    wait   = true
-    deploy = 1
+    chart            = "cert-manager-letsencrypt"
+    name             = "ci"
+    version          = "1.0.4"
+    create_namespace = false
+    deploy           = 1
   }
-  values = [<<EOF
-global:
-  image:
-    tag: v2.5.0-rc3
-argo-cd:
-  config:
-    application.resourceTrackingMethod: annotation
-redis-ha:
-  enabled: true
 
-controller:
-  replicas: 2
-
-repoServer:
-  autoscaling:
-    enabled: true
-    minReplicas: 2
-
-applicationSet:
-  replicas: 2
-
-server:
-  autoscaling:
-    enabled: true
-    minReplicas: 2
-  extraArgs:
-  - --insecure
-  service:
-   type: ClusterIP
-  ingress:
-    enabled: true
-    hosts:
-      - ${local.host_name}.${local.domain_name}
-    ingressClassName: azure-application-gateway
-    annotations:
-      external-dns.alpha.kubernetes.io/hostname: ${local.host_name}.${local.domain_name}
-      cert-manager.io/cluster-issuer: letsencrypt-staging
-    tls: 
-      - secretName: argocd-ingress
-        hosts:
-          - ${local.host_name}.${local.domain_name}
-
-EOF 
+  values = [<<YAML
+email: ${local.admin_email}
+class: azure-application-gateway
+YAML
   ]
 }

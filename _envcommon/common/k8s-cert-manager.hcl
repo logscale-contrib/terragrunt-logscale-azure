@@ -83,7 +83,7 @@ inputs = {
   app = {
     chart            = "cert-manager"
     name             = "cert-manager"
-    version          = "1.10.2"
+    version          = "1.11.0"
     create_namespace = false
     deploy           = 1
   }
