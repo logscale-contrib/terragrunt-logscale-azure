@@ -17,15 +17,17 @@ terraform {
 # Locals are named constants that are reusable within the configuration.
 # ---------------------------------------------------------------------------------------------------------------------
 locals {
-  # Automatically load modules variables
-  module_vars   = read_terragrunt_config(find_in_parent_folders("modules.hcl"))
-  source_module = local.module_vars.locals.helm_release
-
   # Automatically load environment-level variables
   environment_vars = read_terragrunt_config(find_in_parent_folders("env.hcl"))
 
   # Extract out common variables for reuse
-  env          = local.environment_vars.locals.environment
+  env = local.environment_vars.locals.environment
+
+  # Expose the base source URL so different versions of the module can be deployed in different environments. This will
+  # be used to construct the terraform block in the child terragrunt configurations.
+  module_vars   = read_terragrunt_config(find_in_parent_folders("modules.hcl"))
+  source_module = local.module_vars.locals.argocd_project
+
   location_ops = local.environment_vars.locals.location_ops
 
   tag_vars = read_terragrunt_config(find_in_parent_folders("tags.hcl"))
@@ -46,8 +48,12 @@ dependency "rg_ops" {
 dependency "k8s_ops" {
   config_path = "${get_terragrunt_dir()}/../../k8s-ops/"
 }
-dependency "openebs" {
-  config_path  = "${get_terragrunt_dir()}/../k8s-openebs/"
+dependency "ns" {
+  config_path = "${get_terragrunt_dir()}/../logscale-ops-ns/"
+  skip_outputs = true
+}
+dependency "argo" {
+  config_path = "${get_terragrunt_dir()}/../../common/k8s-argocd/"
   skip_outputs = true
 }
 
@@ -56,14 +62,32 @@ generate "provider" {
   if_exists = "overwrite_terragrunt"
   contents  = <<EOF
 
-provider "helm" {
-  kubernetes {
+# provider "kubectl" {
+
+#   apply_retry_count = 10
+#   host              = "${dependency.k8s_ops.outputs.admin_host}"
+#   client_certificate     = base64decode("${dependency.k8s_ops.outputs.admin_client_certificate}")
+#   client_key             = base64decode("${dependency.k8s_ops.outputs.admin_client_key}")
+#   cluster_ca_certificate = base64decode("${dependency.k8s_ops.outputs.admin_cluster_ca_certificate}")
+
+#   load_config_file = false
+# }
+
+provider "kubernetes" {
   host              = "${dependency.k8s_ops.outputs.admin_host}"
   client_certificate     = base64decode("${dependency.k8s_ops.outputs.admin_client_certificate}")
   client_key             = base64decode("${dependency.k8s_ops.outputs.admin_client_key}")
   cluster_ca_certificate = base64decode("${dependency.k8s_ops.outputs.admin_cluster_ca_certificate}")
-  }
 }
+
+# provider "helm" {
+#   kubernetes {
+#   host              = "${dependency.k8s_ops.outputs.admin_host}"
+#   client_certificate     = base64decode("${dependency.k8s_ops.outputs.admin_client_certificate}")
+#   client_key             = base64decode("${dependency.k8s_ops.outputs.admin_client_key}")
+#   cluster_ca_certificate = base64decode("${dependency.k8s_ops.outputs.admin_cluster_ca_certificate}")
+#   }
+# }
 EOF
 }
 # ---------------------------------------------------------------------------------------------------------------------
@@ -72,40 +96,40 @@ EOF
 # environments.
 # ---------------------------------------------------------------------------------------------------------------------
 inputs = {
+  name        = "logscale-ops"
+  namespace   = "argocd"
+  description = "Used for cluster wide resources"
+  repository  = "https://argoproj.github.io/argo-helm"
 
-
-  repository = "https://logscale-contrib.github.io/openebs-withlvm-init"
-  namespace  = "kube-system"
-
-  app = {
-    chart            = "openebs-withlvm-init"
-    name             = "vi"
-    version          = "2.1.0"
-    create_namespace = false
-    deploy           = 1
-    wait             = false
-  }
-
-  values = [<<YAML
-# Default values for openebs-withlvm-init.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
-config:
-  platform: azure
-
-affinity:
-  nodeAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: agentpool
-              operator: In
-              values: ["logscale"]
-            - key: kubernetes.io/os
-              operator: In
-              values:
-                - linux
-
-YAML
+  destinations = [
+    {
+      server    = "https://kubernetes.default.svc"
+      name      = "in-cluster"
+      namespace = "logscale-ops"
+    },
+    {
+      server    = "https://kubernetes.default.svc"
+      name      = "in-cluster"
+      namespace = "monitoring"
+    }
+  ]
+  namespaceResourceWhitelist = [
+    {
+      "group" : "*"
+      "kind" : "*"
+    }
+  ]
+  cluster_resource_whitelist = [
+    {
+      "group" : "rbac.authorization.k8s.io"
+      "kind" : "ClusterRole"
+    },
+    {
+      "group" : "rbac.authorization.k8s.io"
+      "kind" : "ClusterRoleBinding"
+    }
+  ]
+  "sourceRepos" = [
+    "*",
   ]
 }

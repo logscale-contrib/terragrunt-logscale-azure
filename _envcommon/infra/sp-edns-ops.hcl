@@ -9,9 +9,11 @@
 # working directory, into a temporary folder, and execute your Terraform commands in that folder. If any environment
 # needs to deploy a different module version, it should redefine this block with a different ref to override the
 # deployed version.
+
 terraform {
   source = "${local.source_module.base_url}${local.source_module.version}"
 }
+
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Locals are named constants that are reusable within the configuration.
@@ -19,7 +21,7 @@ terraform {
 locals {
   # Automatically load modules variables
   module_vars   = read_terragrunt_config(find_in_parent_folders("modules.hcl"))
-  source_module = local.module_vars.locals.helm_release
+  source_module = local.module_vars.locals.az_sp
 
   # Automatically load environment-level variables
   environment_vars = read_terragrunt_config(find_in_parent_folders("env.hcl"))
@@ -37,75 +39,30 @@ locals {
       Role          = "ops"
     },
   )
+  dns      = read_terragrunt_config(find_in_parent_folders("dns.hcl"))
+  resource = local.dns.locals.resource
 
 }
 
 dependency "rg_ops" {
-  config_path = "${get_terragrunt_dir()}/../../infra/resourcegroup-ops/"
-}
-dependency "k8s_ops" {
-  config_path = "${get_terragrunt_dir()}/../../k8s-ops/"
-}
-dependency "openebs" {
-  config_path  = "${get_terragrunt_dir()}/../k8s-openebs/"
-  skip_outputs = true
+  config_path = "${get_terragrunt_dir()}/../resourcegroup-ops/"
 }
 
-generate "provider" {
-  path      = "provider_k8s.tf"
-  if_exists = "overwrite_terragrunt"
-  contents  = <<EOF
-
-provider "helm" {
-  kubernetes {
-  host              = "${dependency.k8s_ops.outputs.admin_host}"
-  client_certificate     = base64decode("${dependency.k8s_ops.outputs.admin_client_certificate}")
-  client_key             = base64decode("${dependency.k8s_ops.outputs.admin_client_key}")
-  cluster_ca_certificate = base64decode("${dependency.k8s_ops.outputs.admin_cluster_ca_certificate}")
-  }
-}
-EOF
-}
 # ---------------------------------------------------------------------------------------------------------------------
 # MODULE PARAMETERS
 # These are the variables we have to pass in to use the module. This defines the parameters that are common across all
 # environments.
 # ---------------------------------------------------------------------------------------------------------------------
 inputs = {
+  name     = "logscale-ops-${local.env}-edns@logsrlife.onmicrosoft.com"
 
-
-  repository = "https://logscale-contrib.github.io/openebs-withlvm-init"
-  namespace  = "kube-system"
-
-  app = {
-    chart            = "openebs-withlvm-init"
-    name             = "vi"
-    version          = "2.1.0"
-    create_namespace = false
-    deploy           = 1
-    wait             = false
-  }
-
-  values = [<<YAML
-# Default values for openebs-withlvm-init.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
-config:
-  platform: azure
-
-affinity:
-  nodeAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: agentpool
-              operator: In
-              values: ["logscale"]
-            - key: kubernetes.io/os
-              operator: In
-              values:
-                - linux
-
-YAML
+  # Adding roles and scope to service principal
+  assignments = [
+    {
+      scope                = local.resource
+      role_definition_name = "Contributor"
+    },
   ]
+
+
 }

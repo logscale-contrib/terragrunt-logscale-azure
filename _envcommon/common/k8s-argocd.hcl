@@ -38,6 +38,11 @@ locals {
     },
   )
 
+  dns         = read_terragrunt_config(find_in_parent_folders("dns.hcl"))
+  domain_name = local.dns.locals.domain_name
+
+  host_name = "argocd"
+
 }
 
 dependency "rg_ops" {
@@ -46,11 +51,14 @@ dependency "rg_ops" {
 dependency "k8s_ops" {
   config_path = "${get_terragrunt_dir()}/../../k8s-ops/"
 }
-dependency "openebs" {
-  config_path  = "${get_terragrunt_dir()}/../k8s-openebs/"
+dependency "ns" {
+  config_path  = "${get_terragrunt_dir()}/../k8s-ns-argocd/"
   skip_outputs = true
 }
-
+dependency "operator-monitoring" {
+  config_path  = "${get_terragrunt_dir()}/../k8s-prom-crds/"
+  skip_outputs = true
+}
 generate "provider" {
   path      = "provider_k8s.tf"
   if_exists = "overwrite_terragrunt"
@@ -72,40 +80,57 @@ EOF
 # environments.
 # ---------------------------------------------------------------------------------------------------------------------
 inputs = {
-
-
-  repository = "https://logscale-contrib.github.io/openebs-withlvm-init"
-  namespace  = "kube-system"
+  namespace  = "argocd"
+  repository = "https://argoproj.github.io/argo-helm"
 
   app = {
-    chart            = "openebs-withlvm-init"
-    name             = "vi"
-    version          = "2.1.0"
-    create_namespace = false
-    deploy           = 1
-    wait             = false
+    name             = "cw"
+    create_namespace = true
+
+    chart   = "argo-cd"
+    version = "5.16.1"
+
+    wait   = true
+    deploy = 1
   }
+  values = [<<EOF
+global:
+  image:
+    tag: v2.5.0-rc3
+argo-cd:
+  config:
+    application.resourceTrackingMethod: annotation
+redis-ha:
+  enabled: true
 
-  values = [<<YAML
-# Default values for openebs-withlvm-init.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
-config:
-  platform: azure
+controller:
+  replicas: 2
 
-affinity:
-  nodeAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: agentpool
-              operator: In
-              values: ["logscale"]
-            - key: kubernetes.io/os
-              operator: In
-              values:
-                - linux
+repoServer:
+  autoscaling:
+    enabled: true
+    minReplicas: 2
 
-YAML
+applicationSet:
+  replicas: 2
+
+server:
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+  extraArgs:
+  - --insecure
+  service:
+   type: ClusterIP
+  ingress:
+    enabled: true
+    hosts:
+      - ${local.host_name}.${local.domain_name}
+    ingressClassName: alb
+    annotations:
+
+      external-dns.alpha.kubernetes.io/hostname: ${local.host_name}.${local.domain_name}
+
+EOF 
   ]
 }

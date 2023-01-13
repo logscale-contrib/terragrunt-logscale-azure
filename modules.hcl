@@ -17,6 +17,10 @@ locals {
     base_url = "git::git@github.com:logscale-contrib/teraform-self-managed-logscale-azure-aks.git"
     version  = "?ref=v1.4.8"
   }
+  az_sp = {
+    base_url = "git::git@github.com:logscale-contrib/teraform-self-managed-logscale-azure-serviceprincipal.git"
+    version  = "?ref=v1.0.4"
+  }
 
   # vpc = {
   #   base_url = "tfr:///terraform-aws-modules/vpc/aws"
@@ -53,21 +57,21 @@ locals {
     version  = "?ref=v1.0.0"
   }
 
-  # k8s_helm = {
-  #   base_url = "git::git@github.com:logscale-contrib/tf-self-managed-logscale-k8s-helm.git"
-  #   version  = "?ref=v1.4.0"
-  # }
+  k8s_helm = {
+    base_url = "git::git@github.com:logscale-contrib/tf-self-managed-logscale-k8s-helm.git"
+    version  = "?ref=v1.4.0"
+  }
   helm_release = {
     base_url = "tfr:///terraform-module/release/helm"
     version  = "?version=2.8.0"
   }
-  # argocd_project = {
-  #   #base_url = "tfr:///project-octal/k8s-argocd-project/kubernetes"
-  #   #version  = "?version=2.0.0"
-  #   base_url = "git::git@github.com:logscale-contrib/terraform-kubernetes-argocd-project.git"
-  #   version  = ""
+  argocd_project = {
+    #base_url = "tfr:///project-octal/k8s-argocd-project/kubernetes"
+    #version  = "?version=2.0.0"
+    base_url = "git::git@github.com:logscale-contrib/terraform-kubernetes-argocd-project.git"
+    version  = ""
 
-  # }
+  }
 
   # aws_k8s_logscale_bucket_with_iam = {
   #   base_url = "git::git@github.com:logscale-contrib/terraform-aws-logscale-bucket-with-iam.git"
