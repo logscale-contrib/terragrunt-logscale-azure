@@ -205,9 +205,9 @@ zookeeper:
       cpu: "1"
   storage:
     deleteClaim: true
-    type: managed-csi-premium
+    type: persistent-claim
     size: 10Gi
-    class: ebs-gp3-enc
+    class: managed-csi-premium
 
 EOF
   )

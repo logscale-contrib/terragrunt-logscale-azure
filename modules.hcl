@@ -15,7 +15,7 @@ locals {
   }
   k8s = {
     base_url = "git::git@github.com:logscale-contrib/teraform-self-managed-logscale-azure-aks.git"
-    version  = "?ref=v1.4.8"
+    version  = "?ref=v1.5.0"
   }
   az_sp = {
     base_url = "git::git@github.com:logscale-contrib/teraform-self-managed-logscale-azure-serviceprincipal.git"

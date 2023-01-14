@@ -58,7 +58,7 @@ dependency "operator-monitoring" {
   skip_outputs = true
 }
 dependency "sp" {
-  config_path  = "${get_terragrunt_dir()}/../../infra/sp-edns-ops/"
+  config_path = "${get_terragrunt_dir()}/../../infra/sp-edns-ops/"
 }
 generate "provider" {
   path      = "provider_k8s.tf"
