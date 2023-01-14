@@ -119,7 +119,7 @@ kafka:
               - key: kubernetes.azure.com/agentpool
                 operator: In
                 values:
-                  - utilitypool
+                  - compute
     podAntiAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
         - labelSelector:
@@ -176,7 +176,7 @@ zookeeper:
               - key: kubernetes.azure.com/agentpool
                 operator: In
                 values:
-                  - utilitypool
+                  - compute
     podAntiAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
         - labelSelector:

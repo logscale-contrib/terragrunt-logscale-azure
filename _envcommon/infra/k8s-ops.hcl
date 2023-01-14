@@ -62,12 +62,14 @@ inputs = {
   location       = dependency.rg_ops.outputs.resource_group_location
   subnet_id      = dependency.net_ops.outputs.virtual_subnet_id
 
-  subnet_id_ag            = dependency.net_ops.outputs.virtual_subnet_id_ag
-  prefix                  = "logscale-ops-${local.env}"
-  disk_encryption_set_id  = dependency.vault_ops.outputs.disk_encryption_set_id
-  agent_size              = "standard_d2s_v5"
-  agent_size_max          = 6
-  agent_size_logscale     = "Standard_L8as_v3"
-  agent_size_logscale_max = 6
-  tags                    = local.tags
+  subnet_id_ag           = dependency.net_ops.outputs.virtual_subnet_id_ag
+  prefix                 = "logscale-ops-${local.env}"
+  disk_encryption_set_id = dependency.vault_ops.outputs.disk_encryption_set_id
+  agent_size             = "Standard_B2s"
+  agent_max              = 3
+  agent_compute_size     = "standard_d2s_v5"
+  agent_compute_max      = 6
+  agent_nvme_size        = "Standard_L8as_v3"
+  agent_nvme_max         = 3
+  tags                   = local.tags
 }

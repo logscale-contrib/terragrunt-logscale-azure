@@ -89,20 +89,20 @@ inputs = {
   values = [<<YAML
 ndm: 
   nodeSelector:
-      agentpool: logscale
+      kubernetes.azure.com/agentpool: nvme
   tolerations:
   - operator: "Exists"
 ndmOperator:
   nodeSelector:
-      agentpool: utilitypool
+      kubernetes.azure.com/agentpool: system
 localprovisioner:      
   nodeSelector:
-      agentpool: utilitypool
+      kubernetes.azure.com/agentpool: system
 lvm-localpv:
     enabled: true
     lvmNode:
         nodeSelector:
-            agentpool: logscale
+            kubernetes.azure.com/agentpool: nvme
         tolerations:
         - operator: "Exists"
 YAML

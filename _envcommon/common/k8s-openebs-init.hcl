@@ -98,9 +98,9 @@ affinity:
     requiredDuringSchedulingIgnoredDuringExecution:
       nodeSelectorTerms:
         - matchExpressions:
-            - key: agentpool
+            - key: kubernetes.azure.com/agentpool
               operator: In
-              values: ["logscale"]
+              values: ["nvme"]
             - key: kubernetes.io/os
               operator: In
               values:
