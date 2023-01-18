@@ -28,22 +28,19 @@ locals {
   module_vars   = read_terragrunt_config(find_in_parent_folders("modules.hcl"))
   source_module = local.module_vars.locals.k8s_helm
 
-  # Automatically load account-level variables
-  account_vars = read_terragrunt_config(find_in_parent_folders("account.hcl"))
+  location_ops = local.environment_vars.locals.location_ops
 
-  # Automatically load region-level variables
-  region_vars = read_terragrunt_config(find_in_parent_folders("region.hcl"))
+  tag_vars = read_terragrunt_config(find_in_parent_folders("tags.hcl"))
+  tags = merge(
+    local.tag_vars.locals.tags,
+    {
+      Environment   = local.env
+      GitRepository = run_cmd("sh", "-c", "git config --get remote.origin.url")
+      Role          = "ops"
+    },
+  )
 
-  # Automatically load region-level variables
-  admin = read_terragrunt_config(find_in_parent_folders("admin.hcl"))
-
-  # Extract the variables we need for easy access
-  account_name = local.account_vars.locals.account_name
-  account_id   = local.account_vars.locals.aws_account_id
-  aws_region   = local.region_vars.locals.aws_region
-
-  dns = read_terragrunt_config(find_in_parent_folders("dns.hcl"))
-
+    dns         = read_terragrunt_config(find_in_parent_folders("dns.hcl"))
   domain_name = local.dns.locals.domain_name
 
   humio                    = read_terragrunt_config(find_in_parent_folders("humio.hcl"))
@@ -52,63 +49,55 @@ locals {
   humio_sso_idpCertificate = local.humio.locals.humio_sso_idpCertificate
   humio_sso_signOnUrl      = local.humio.locals.humio_sso_signOnUrl
   humio_sso_entityID       = local.humio.locals.humio_sso_entityID
+
 }
-dependency "eks" {
-  config_path = "${get_terragrunt_dir()}/../../aws/infra/eks/"
+
+dependency "rg_ops" {
+  config_path = "${get_terragrunt_dir()}/../../infra/resourcegroup-ops/"
 }
-dependency "acm_ui" {
-  config_path = "${get_terragrunt_dir()}/../../aws/infra/acm-ui/"
+dependency "k8s_ops" {
+  config_path = "${get_terragrunt_dir()}/../../k8s-ops/"
 }
-dependency "bucket" {
-  config_path = "${get_terragrunt_dir()}/../aws-logscale-ops-bucket_iam/"
+dependency "ns" {
+  config_path  = "${get_terragrunt_dir()}/../logscale-ops-ns/"
+  skip_outputs = true
 }
-dependencies {
-  paths = [
-    "${get_terragrunt_dir()}/../logscale-ops-otel/",
-    "${get_terragrunt_dir()}/../logscale-ops-strimzi/",
-    "${get_terragrunt_dir()}/../logscale-ops-project/"
-  ]
+dependency "argo" {
+  config_path  = "${get_terragrunt_dir()}/../../common/k8s-argocd/"
+  skip_outputs = true
 }
+
 generate "provider" {
   path      = "provider_k8s.tf"
   if_exists = "overwrite_terragrunt"
   contents  = <<EOF
-provider "kubernetes" {
-  
-  host                   = "${dependency.eks.outputs.eks_endpoint}"
-  cluster_ca_certificate = base64decode("${dependency.eks.outputs.eks_cluster_certificate_authority_data}")
-  exec {
-    api_version = "client.authentication.k8s.io/v1"
-    command     = "aws"
-    # This requires the awscli to be installed locally where Terraform is executed
-    args = ["eks", "get-token", "--cluster-name", "logscale-${local.env}"]
-  }
-}
-provider "kubectl" {
-  apply_retry_count      = 10
-  load_config_file       = false
-  host                   = "${dependency.eks.outputs.eks_endpoint}"
-  cluster_ca_certificate = base64decode("${dependency.eks.outputs.eks_cluster_certificate_authority_data}")
-  exec {
-    api_version = "client.authentication.k8s.io/v1beta1"
-    command     = "aws"
-    # This requires the awscli to be installed locally where Terraform is executed
-    args = ["eks", "get-token", "--cluster-name", "logscale-${local.env}"]
-  }
-}
-provider "helm" {
-  kubernetes {
-    host                   = "${dependency.eks.outputs.eks_endpoint}"
-    cluster_ca_certificate = base64decode("${dependency.eks.outputs.eks_cluster_certificate_authority_data}")
 
-    exec {
-      api_version = "client.authentication.k8s.io/v1"
-      command     = "aws"
-      # This requires the awscli to be installed locally where Terraform is executed
-      args = ["eks", "get-token", "--cluster-name", "logscale-${local.env}"]
-    }
-  }
+# provider "kubectl" {
+
+#   apply_retry_count = 10
+#   host              = "${dependency.k8s_ops.outputs.admin_host}"
+#   client_certificate     = base64decode("${dependency.k8s_ops.outputs.admin_client_certificate}")
+#   client_key             = base64decode("${dependency.k8s_ops.outputs.admin_client_key}")
+#   cluster_ca_certificate = base64decode("${dependency.k8s_ops.outputs.admin_cluster_ca_certificate}")
+
+#   load_config_file = false
+# }
+
+provider "kubernetes" {
+  host              = "${dependency.k8s_ops.outputs.admin_host}"
+  client_certificate     = base64decode("${dependency.k8s_ops.outputs.admin_client_certificate}")
+  client_key             = base64decode("${dependency.k8s_ops.outputs.admin_client_key}")
+  cluster_ca_certificate = base64decode("${dependency.k8s_ops.outputs.admin_cluster_ca_certificate}")
 }
+
+# provider "helm" {
+#   kubernetes {
+#   host              = "${dependency.k8s_ops.outputs.admin_host}"
+#   client_certificate     = base64decode("${dependency.k8s_ops.outputs.admin_client_certificate}")
+#   client_key             = base64decode("${dependency.k8s_ops.outputs.admin_client_key}")
+#   cluster_ca_certificate = base64decode("${dependency.k8s_ops.outputs.admin_cluster_ca_certificate}")
+#   }
+# }
 EOF
 }
 # ---------------------------------------------------------------------------------------------------------------------
@@ -129,9 +118,9 @@ inputs = {
   project          = "logscale-ops"
 
   values = {
-    platform = "aws"
+    platform = "azure"
     humio = {
-      s3mode            = "aws"
+      s3mode            = "azure"
       kafkaManager      = "strimzi"
       kafkaPrefixEnable = true
       strimziCluster    = "ops-logscale-strimzi-kafka"
@@ -149,14 +138,11 @@ inputs = {
       }
       serviceAccount = {
         name = "logscale-ops"
-        annotations = {
-          "eks.amazonaws.com/role-arn" = dependency.bucket.outputs.iam_role_arn
-        }
       }
 
       buckets = {
-        region  = local.aws_region
-        storage = dependency.bucket.outputs.s3_bucket_id
+        region  = "us-east-1"
+        storage = "data"
       }
       podAnnotations = {
         "config.linkerd.io/skip-outbound-ports" = "443"
@@ -175,6 +161,13 @@ inputs = {
           cpu    = 4
         }
       }
+      tolerations = [
+        { key = "workloadClass"
+        operator= "Equal"
+        value = "nvme"
+        effect= "NoSchedule"
+        }
+      ]
       affinity = {
         nodeAffinity = {
           requiredDuringSchedulingIgnoredDuringExecution = {
@@ -190,6 +183,11 @@ inputs = {
                     key      = "kubernetes.io/os"
                     operator = "In"
                     values   = ["linux"]
+                  }                  ,
+                  {
+                    key      = "kubernetes.azure.com/agentpool"
+                    operator = "In"
+                    values   = ["nvme"]
                   }
                 ]
               }
@@ -222,10 +220,10 @@ inputs = {
           ]
           resources = {
             requests = {
-              storage = "100Gi"
+              storage = "1Ti"
             }
           }
-          storageClassName = "ebs-gp3-enc"
+          storageClassName = "openebs-lvmpv"
         }
       }
       externalKafkaHostname = "ops-logscale-strimzi-kafka-kafka-bootstrap:9092"
@@ -236,24 +234,12 @@ inputs = {
         enabled = true
         tls     = false
         annotations = {
-          "alb.ingress.kubernetes.io/certificate-arn" = dependency.acm_ui.outputs.acm_certificate_arn
-          "alb.ingress.kubernetes.io/listen-ports"    = "[{\"HTTP\": 80}, {\"HTTPS\": 443}]"
-          "alb.ingress.kubernetes.io/ssl-redirect"    = "443"
-          "alb.ingress.kubernetes.io/scheme"          = "internet-facing"
-          "alb.ingress.kubernetes.io/target-type"     = "ip"
-          "alb.ingress.kubernetes.io/group.name"      = "logscale-${local.env}"
           "external-dns.alpha.kubernetes.io/hostname" = "logscale-ops.${local.domain_name}"
         }
         annotationsInputs = {
-          "alb.ingress.kubernetes.io/certificate-arn" = dependency.acm_ui.outputs.acm_certificate_arn
-          "alb.ingress.kubernetes.io/listen-ports"    = "[{\"HTTP\": 80}, {\"HTTPS\": 443}]"
-          "alb.ingress.kubernetes.io/ssl-redirect"    = "443"
-          "alb.ingress.kubernetes.io/scheme"          = "internet-facing"
-          "alb.ingress.kubernetes.io/target-type"     = "ip"
-          "alb.ingress.kubernetes.io/group.name"      = "logscale-${local.env}"
           "external-dns.alpha.kubernetes.io/hostname" = "logscale-ops-inputs.${local.domain_name}"
         }
-        className = "alb"
+        className = "azure-application-gateway"
       }
     }
     opentelemetryOperator = {

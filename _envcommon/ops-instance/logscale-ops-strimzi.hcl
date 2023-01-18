@@ -102,7 +102,7 @@ inputs = {
   repository       = "ghcr.io/logscale-contrib/helm-logscale-strimzi-kafka/charts"
   release          = "ops"
   chart            = "logscale-strimzi-kafka"
-  chart_version    = "1.2.3"
+  chart_version    = "1.3.1"
   namespace        = "logscale-ops"
   create_namespace = false
   project          = "logscale-ops"
@@ -139,6 +139,11 @@ kafka:
             operator: In
             values:
               - "ops-kafka-kafkacluster-kafka"
+  tolerations:
+    - key: workloadClass
+      operator: Equal
+      value: compute
+      effect: NoSchedule
 
   # At least 3 replicas are required the number of replicas must be at east 3 and evenly
   # divisible by number of zones
@@ -196,6 +201,11 @@ zookeeper:
             operator: In
             values:
               - "ops-kafka-kafkacluster-zookeeper"
+  tolerations:
+    - key: workloadClass
+      operator: Equal
+      value: compute
+      effect: NoSchedule              
   resources:
     requests:
       memory: 1Gi

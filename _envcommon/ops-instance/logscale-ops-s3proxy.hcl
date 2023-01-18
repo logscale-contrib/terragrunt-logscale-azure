@@ -147,7 +147,39 @@ env:
 - name: S3PROXY_V4_MAX_NON_CHUNKED_REQ_SIZE
   value: "100000000"
 
-
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.azure.com/agentpool
+              operator: In
+              values:
+                - compute
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+            - key: strimzi.io/name
+              operator: In
+              values:
+                - "ops-kafka-kafkacluster-zookeeper"
+        topologyKey: kubernetes.io/hostname
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: DoNotSchedule
+    labelSelector:
+      matchExpressions:
+        - key: strimzi.io/name
+          operator: In
+          values:
+            - "ops-kafka-kafkacluster-zookeeper"
+tolerations:
+  - key: workloadClass
+    operator: Equal
+    value: compute
+    effect: NoSchedule    
 EOF
   )
 

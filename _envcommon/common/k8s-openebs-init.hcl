@@ -80,7 +80,7 @@ inputs = {
   app = {
     chart            = "openebs-withlvm-init"
     name             = "vi"
-    version          = "2.1.0"
+    version          = "2.2.4"
     create_namespace = false
     deploy           = 1
     wait             = false
@@ -92,7 +92,9 @@ inputs = {
 # Declare variables to be passed into your templates.
 config:
   platform: azure
-
+allowedTopologies:
+  key: kubernetes.azure.com/agentpool
+  values: ["nvme"]  
 affinity:
   nodeAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
@@ -101,11 +103,27 @@ affinity:
             - key: kubernetes.azure.com/agentpool
               operator: In
               values: ["nvme"]
+            - key: kubernetes.azure.com/cluster                
+              operator: Exists              
+            - key: type
+              operator: NotIn
+              values:
+              - virtual-kubelet              
             - key: kubernetes.io/os
               operator: In
               values:
                 - linux
-
+tolerations:
+  - key: workloadClass
+    operator: Equal
+    value: nvme
+    effect: NoSchedule            
+  - key: CriticalAddonsOnly        
+    operator: Exists      
+  - effect: NoExecute        
+    operator: Exists      
+  - effect: NoSchedule        
+    operator: Exists    
 YAML
   ]
 }
