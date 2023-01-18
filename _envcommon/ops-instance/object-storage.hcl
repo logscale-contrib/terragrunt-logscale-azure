@@ -21,7 +21,7 @@ terraform {
 locals {
   # Automatically load modules variables
   module_vars   = read_terragrunt_config(find_in_parent_folders("modules.hcl"))
-  source_module = local.module_vars.locals.k8s
+  source_module = local.module_vars.locals.az_store
 
   # Automatically load environment-level variables
   environment_vars = read_terragrunt_config(find_in_parent_folders("env.hcl"))
@@ -42,14 +42,9 @@ locals {
 }
 
 dependency "rg_ops" {
-  config_path = "${get_terragrunt_dir()}/../infra/resourcegroup-ops/"
+  config_path = "${get_terragrunt_dir()}/../../infra/resourcegroup-ops/"
 }
-dependency "net_ops" {
-  config_path = "${get_terragrunt_dir()}/../infra/network-ops/"
-}
-dependency "vault_ops" {
-  config_path = "${get_terragrunt_dir()}/../infra/vault-ops/"
-}
+
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -58,18 +53,43 @@ dependency "vault_ops" {
 # environments.
 # ---------------------------------------------------------------------------------------------------------------------
 inputs = {
-  resource_group = dependency.rg_ops.outputs.resource_group_name
+  resource_group_name = dependency.rg_ops.outputs.resource_group_name
   location       = dependency.rg_ops.outputs.resource_group_location
-  subnet_id      = dependency.net_ops.outputs.virtual_subnet_id
+  
+  storage_account_name = "logscale-ops-${local.env}"
 
-  subnet_id_ag           = dependency.net_ops.outputs.virtual_subnet_id_ag
-  prefix                 = "logscale-ops-${local.env}"
-  disk_encryption_set_id = dependency.vault_ops.outputs.disk_encryption_set_id
-  agent_size             = "Standard_B2s"
-  agent_max              = 3
-  agent_compute_size     = "standard_d2as_v5"
-  agent_compute_max      = 6
-  agent_nvme_size        = "Standard_L8as_v3"
-  agent_nvme_max         = 3
-  tags                   = local.tags
+  containers_list = [
+    { name = "data", access_type = "container" },
+    { name = "archive", access_type = "container" },
+    { name = "export", access_type = "container" }
+  ]
+
+  enable_versioning = true
+  skuname           = "Standard_RAGRS"
+
+#   lifecycles = [
+#     {
+#       prefix_match               = ["data/"]
+#       tier_to_cool_after_days    = 90
+#       tier_to_archive_after_days = 120
+#       delete_after_days          = 365
+#       snapshot_delete_after_days = 30
+#     },
+#     {
+#       prefix_match               = ["archive/"]
+#       tier_to_cool_after_days    = 3
+#       tier_to_archive_after_days = 7
+#       delete_after_days          = 60
+#       snapshot_delete_after_days = 30
+#     },
+#     {
+#       prefix_match               = ["export/"]
+#       tier_to_cool_after_days    = 3
+#       tier_to_archive_after_days = 7
+#       delete_after_days          = 60
+#       snapshot_delete_after_days = 30
+#     }
+#   ]
+
+  tags = local.tags
 }
