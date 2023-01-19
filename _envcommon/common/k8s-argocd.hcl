@@ -88,7 +88,7 @@ inputs = {
     create_namespace = true
 
     chart   = "argo-cd"
-    version = "5.16.1"
+    version = "5.17.4"
 
     wait   = true
     deploy = 1
@@ -126,12 +126,14 @@ server:
     enabled: true
     hosts:
       - ${local.host_name}.${local.domain_name}
-    ingressClassName: azure-application-gateway
+    # ingressClassName: azure-application-gateway
     annotations:
       external-dns.alpha.kubernetes.io/hostname: ${local.host_name}.${local.domain_name}
-      cert-manager.io/cluster-issuer: letsencrypt-staging
+      kubernetes.io/ingress.class: azure/application-gateway
+      cert-manager.io/cluster-issuer: aag-letsencrypt
+      appgw.ingress.kubernetes.io/ssl-redirect: true
     tls: 
-      - secretName: argocd-ingress
+      - secretName: argocd-ingress-tls
         hosts:
           - ${local.host_name}.${local.domain_name}
 

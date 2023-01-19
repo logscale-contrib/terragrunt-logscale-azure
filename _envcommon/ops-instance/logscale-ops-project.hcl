@@ -49,7 +49,7 @@ dependency "k8s_ops" {
   config_path = "${get_terragrunt_dir()}/../../k8s-ops/"
 }
 dependency "ns" {
-  config_path  = "${get_terragrunt_dir()}/../logscale-ops-ns/"
+  config_path  = "${get_terragrunt_dir()}/../../logscale-ops-ns/"
   skip_outputs = true
 }
 dependency "argo" {

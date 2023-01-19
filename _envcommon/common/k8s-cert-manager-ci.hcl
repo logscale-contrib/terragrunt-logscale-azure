@@ -85,15 +85,15 @@ inputs = {
 
   app = {
     chart            = "cert-manager-letsencrypt"
-    name             = "ci"
-    version          = "1.0.4"
+    name             = "aag"
+    version          = "2.0.0"
     create_namespace = false
     deploy           = 1
   }
 
   values = [<<YAML
 email: ${local.admin_email}
-class: azure-application-gateway
+class: azure/application-gateway
 YAML
   ]
 }

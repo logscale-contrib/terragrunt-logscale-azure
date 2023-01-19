@@ -41,7 +41,7 @@ locals {
   )
 
   # Extract the variables we need for easy access
-  account_vars = read_terragrunt_config(find_in_parent_folders("account.hcl"))
+  account_vars    = read_terragrunt_config(find_in_parent_folders("account.hcl"))
   subscription_id = local.account_vars.locals.subscription_id
   tenant_id       = local.account_vars.locals.tenant_id
 
@@ -56,7 +56,7 @@ dependency "k8s_ops" {
   config_path = "${get_terragrunt_dir()}/../../k8s-ops/"
 }
 dependency "ns" {
-  config_path  = "${get_terragrunt_dir()}/../logscale-ops-ns/"
+  config_path  = "${get_terragrunt_dir()}/../../logscale-ops-ns/"
   skip_outputs = true
 }
 dependency "argo" {
@@ -64,7 +64,7 @@ dependency "argo" {
   skip_outputs = true
 }
 dependency "storage" {
-  config_path  = "${get_terragrunt_dir()}/../object-storage/"
+  config_path = "${get_terragrunt_dir()}/../object-storage/"
 }
 generate "provider" {
   path      = "provider_k8s.tf"
@@ -130,12 +130,14 @@ resources:
     cpu: 1
     memory: 1Gi
 env:
+# - name: LOG_LEVEL
+#   value: DEBUG
 - name: JCLOUDS_PROVIDER
   value: azureblob
 - name: JCLOUDS_IDENTITY
   value: ${dependency.storage.outputs.storage_account_name}
 - name: JCLOUDS_CREDENTIAL
-  value: ${dependency.storage.outputs.storage_account_name}
+  value: ${dependency.storage.outputs.storage_secondary_access_key}
 - name: JCLOUDS_AZUREBLOB_TENANTID
   value: "${local.tenant_id}"
 - name: JCLOUDS_ENDPOINT

@@ -67,13 +67,13 @@ inputs = {
   disk_encryption_set_id = dependency.vault_ops.outputs.disk_encryption_set_id
   agent_size             = "Standard_B2s"
   agent_max              = 6
-  agent_compute_size     = "standard_d2as_v5"
-  agent_compute_max      = 6
+  agent_compute_size     = "Standard_D4as_v5"
+  agent_compute_max      = 9
   agent_nvme_size        = "Standard_L8s_v3"
   #"Standard_L16s_v3"
   #"Standard_L8s_v3"
   #"Standard_L8as_v3"
-  agent_nvme_min        = 3
-  agent_nvme_max         = 3
-  tags                   = local.tags
+  agent_nvme_min = 3
+  agent_nvme_max = 4
+  tags           = local.tags
 }

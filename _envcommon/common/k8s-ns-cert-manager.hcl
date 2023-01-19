@@ -90,4 +90,7 @@ inputs = {
   annotations = {
     "linkerd.io/inject" = "disabled"
   }
+  labels = {
+    "certmanager.k8s.io/disable-validation" = true
+  }
 }

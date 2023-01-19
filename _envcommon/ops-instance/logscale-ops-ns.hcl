@@ -41,10 +41,10 @@ locals {
 }
 
 dependency "rg_ops" {
-  config_path = "${get_terragrunt_dir()}/../../infra/resourcegroup-ops/"
+  config_path = "${get_terragrunt_dir()}/../infra/resourcegroup-ops/"
 }
 dependency "k8s_ops" {
-  config_path = "${get_terragrunt_dir()}/../../k8s-ops/"
+  config_path = "${get_terragrunt_dir()}/../k8s-ops/"
 }
 
 generate "provider" {

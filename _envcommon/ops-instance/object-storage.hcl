@@ -54,8 +54,8 @@ dependency "rg_ops" {
 # ---------------------------------------------------------------------------------------------------------------------
 inputs = {
   resource_group_name = dependency.rg_ops.outputs.resource_group_name
-  location       = dependency.rg_ops.outputs.resource_group_location
-  
+  location            = dependency.rg_ops.outputs.resource_group_location
+
   storage_account_name = "logscale-ops-${local.env}"
 
   containers_list = [
@@ -67,29 +67,29 @@ inputs = {
   enable_versioning = true
   skuname           = "Standard_RAGRS"
 
-#   lifecycles = [
-#     {
-#       prefix_match               = ["data/"]
-#       tier_to_cool_after_days    = 90
-#       tier_to_archive_after_days = 120
-#       delete_after_days          = 365
-#       snapshot_delete_after_days = 30
-#     },
-#     {
-#       prefix_match               = ["archive/"]
-#       tier_to_cool_after_days    = 3
-#       tier_to_archive_after_days = 7
-#       delete_after_days          = 60
-#       snapshot_delete_after_days = 30
-#     },
-#     {
-#       prefix_match               = ["export/"]
-#       tier_to_cool_after_days    = 3
-#       tier_to_archive_after_days = 7
-#       delete_after_days          = 60
-#       snapshot_delete_after_days = 30
-#     }
-#   ]
+  #   lifecycles = [
+  #     {
+  #       prefix_match               = ["data/"]
+  #       tier_to_cool_after_days    = 90
+  #       tier_to_archive_after_days = 120
+  #       delete_after_days          = 365
+  #       snapshot_delete_after_days = 30
+  #     },
+  #     {
+  #       prefix_match               = ["archive/"]
+  #       tier_to_cool_after_days    = 3
+  #       tier_to_archive_after_days = 7
+  #       delete_after_days          = 60
+  #       snapshot_delete_after_days = 30
+  #     },
+  #     {
+  #       prefix_match               = ["export/"]
+  #       tier_to_cool_after_days    = 3
+  #       tier_to_archive_after_days = 7
+  #       delete_after_days          = 60
+  #       snapshot_delete_after_days = 30
+  #     }
+  #   ]
 
   tags = local.tags
 }

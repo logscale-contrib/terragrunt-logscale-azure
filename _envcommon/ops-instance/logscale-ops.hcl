@@ -40,7 +40,7 @@ locals {
     },
   )
 
-    dns         = read_terragrunt_config(find_in_parent_folders("dns.hcl"))
+  dns         = read_terragrunt_config(find_in_parent_folders("dns.hcl"))
   domain_name = local.dns.locals.domain_name
 
   humio                    = read_terragrunt_config(find_in_parent_folders("humio.hcl"))
@@ -59,7 +59,7 @@ dependency "k8s_ops" {
   config_path = "${get_terragrunt_dir()}/../../k8s-ops/"
 }
 dependency "ns" {
-  config_path  = "${get_terragrunt_dir()}/../logscale-ops-ns/"
+  config_path  = "${get_terragrunt_dir()}/../../logscale-ops-ns/"
   skip_outputs = true
 }
 dependency "argo" {
@@ -108,11 +108,11 @@ EOF
 inputs = {
   uniqueName = "logscale-${local.env}"
 
-  repository = "https://logscale-contrib.github.io/helm-logscale"
+  repository = "ghcr.io/logscale-contrib/helm-logscale/charts"
 
   release          = "ops"
   chart            = "logscale"
-  chart_version    = "3.0.2"
+  chart_version    = "4.0.0-next.2"
   namespace        = "logscale-ops"
   create_namespace = false
   project          = "logscale-ops"
@@ -120,7 +120,7 @@ inputs = {
   values = {
     platform = "azure"
     humio = {
-      s3mode            = "azure"
+      s3mode            = "s3proxy"
       kafkaManager      = "strimzi"
       kafkaPrefixEnable = true
       strimziCluster    = "ops-logscale-strimzi-kafka"
@@ -153,8 +153,8 @@ inputs = {
       nodeCount = 3
       resources = {
         requests = {
-          memory = "2Gi"
-          cpu    = 2
+          memory = "4Gi"
+          cpu    = 4
         }
         limits = {
           memory = "4Gi"
@@ -162,10 +162,10 @@ inputs = {
         }
       }
       tolerations = [
-        { key = "workloadClass"
-        operator= "Equal"
-        value = "nvme"
-        effect= "NoSchedule"
+        { key      = "workloadClass"
+          operator = "Equal"
+          value    = "nvme"
+          effect   = "NoSchedule"
         }
       ]
       affinity = {
@@ -183,7 +183,7 @@ inputs = {
                     key      = "kubernetes.io/os"
                     operator = "In"
                     values   = ["linux"]
-                  }                  ,
+                  },
                   {
                     key      = "kubernetes.azure.com/agentpool"
                     operator = "In"
@@ -232,18 +232,24 @@ inputs = {
       }
       ingress = {
         enabled = true
-        tls     = false
+        tls     = true
         annotations = {
           "external-dns.alpha.kubernetes.io/hostname" = "logscale-ops.${local.domain_name}"
+          "kubernetes.io/ingress.class"               = "azure/application-gateway"
+          "cert-manager.io/cluster-issuer"            = "aag-letsencrypt"
+          "appgw.ingress.kubernetes.io/ssl-redirect"  = "true"
         }
         annotationsInputs = {
           "external-dns.alpha.kubernetes.io/hostname" = "logscale-ops-inputs.${local.domain_name}"
+          "kubernetes.io/ingress.class"               = "azure/application-gateway"
+          "cert-manager.io/cluster-issuer"            = "aag-letsencrypt"
+          "appgw.ingress.kubernetes.io/ssl-redirect"  = "true"
         }
-        className = "azure-application-gateway"
+        # className = "azure-application-gateway"
       }
     }
     opentelemetryOperator = {
-      enabled = true
+      enabled = false
     }
 
 
