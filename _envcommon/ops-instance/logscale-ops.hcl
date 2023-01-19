@@ -249,7 +249,7 @@ inputs = {
       }
     }
     opentelemetryOperator = {
-      enabled = false
+      enabled = true
     }
 
 

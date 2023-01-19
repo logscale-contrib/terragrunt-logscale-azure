@@ -28,59 +28,75 @@ locals {
   module_vars   = read_terragrunt_config(find_in_parent_folders("modules.hcl"))
   source_module = local.module_vars.locals.k8s_helm
 
-  # Automatically load account-level variables
-  account_vars = read_terragrunt_config(find_in_parent_folders("account.hcl"))
+  location_ops = local.environment_vars.locals.location_ops
 
-  # Automatically load region-level variables
-  region_vars = read_terragrunt_config(find_in_parent_folders("region.hcl"))
-
-  # Automatically load region-level variables
-  admin = read_terragrunt_config(find_in_parent_folders("admin.hcl"))
+  tag_vars = read_terragrunt_config(find_in_parent_folders("tags.hcl"))
+  tags = merge(
+    local.tag_vars.locals.tags,
+    {
+      Environment   = local.env
+      GitRepository = run_cmd("sh", "-c", "git config --get remote.origin.url")
+      Role          = "ops"
+    },
+  )
 
   # Extract the variables we need for easy access
-  account_name = local.account_vars.locals.account_name
-  account_id   = local.account_vars.locals.aws_account_id
-  aws_region   = local.region_vars.locals.aws_region
+  account_vars    = read_terragrunt_config(find_in_parent_folders("account.hcl"))
+  subscription_id = local.account_vars.locals.subscription_id
+  tenant_id       = local.account_vars.locals.tenant_id
+
+
 
 }
-dependency "eks" {
-  config_path = "${get_terragrunt_dir()}/../../aws/infra/eks/"
+
+dependency "rg_ops" {
+  config_path = "${get_terragrunt_dir()}/../../infra/resourcegroup-ops/"
 }
-dependency "acm_ui" {
-  config_path = "${get_terragrunt_dir()}/../../aws/infra/acm-ui/"
+dependency "k8s_ops" {
+  config_path = "${get_terragrunt_dir()}/../../k8s-ops/"
 }
-dependencies {
-  paths = [
-    "${get_terragrunt_dir()}/../logscale-ops-project/"
-  ]
+dependency "ns" {
+  config_path  = "${get_terragrunt_dir()}/../../logscale-ops-ns/"
+  skip_outputs = true
+}
+dependency "argo" {
+  config_path  = "${get_terragrunt_dir()}/../../common/k8s-argocd/"
+  skip_outputs = true
+}
+dependency "storage" {
+  config_path = "${get_terragrunt_dir()}/../object-storage/"
 }
 generate "provider" {
   path      = "provider_k8s.tf"
   if_exists = "overwrite_terragrunt"
   contents  = <<EOF
+
+# provider "kubectl" {
+
+#   apply_retry_count = 10
+#   host              = "${dependency.k8s_ops.outputs.admin_host}"
+#   client_certificate     = base64decode("${dependency.k8s_ops.outputs.admin_client_certificate}")
+#   client_key             = base64decode("${dependency.k8s_ops.outputs.admin_client_key}")
+#   cluster_ca_certificate = base64decode("${dependency.k8s_ops.outputs.admin_cluster_ca_certificate}")
+
+#   load_config_file = false
+# }
+
 provider "kubernetes" {
-  
-  host                   = "${dependency.eks.outputs.eks_endpoint}"
-  cluster_ca_certificate = base64decode("${dependency.eks.outputs.eks_cluster_certificate_authority_data}")
-  exec {
-    api_version = "client.authentication.k8s.io/v1"
-    command     = "aws"
-    # This requires the awscli to be installed locally where Terraform is executed
-    args = ["eks", "get-token", "--cluster-name", "logscale-${local.env}"]
-  }
+  host              = "${dependency.k8s_ops.outputs.admin_host}"
+  client_certificate     = base64decode("${dependency.k8s_ops.outputs.admin_client_certificate}")
+  client_key             = base64decode("${dependency.k8s_ops.outputs.admin_client_key}")
+  cluster_ca_certificate = base64decode("${dependency.k8s_ops.outputs.admin_cluster_ca_certificate}")
 }
-provider "kubectl" {
-  apply_retry_count      = 10
-  load_config_file       = false
-  host                   = "${dependency.eks.outputs.eks_endpoint}"
-  cluster_ca_certificate = base64decode("${dependency.eks.outputs.eks_cluster_certificate_authority_data}")
-  exec {
-    api_version = "client.authentication.k8s.io/v1beta1"
-    command     = "aws"
-    # This requires the awscli to be installed locally where Terraform is executed
-    args = ["eks", "get-token", "--cluster-name", "logscale-${local.env}"]
-  }
-}
+
+# provider "helm" {
+#   kubernetes {
+#   host              = "${dependency.k8s_ops.outputs.admin_host}"
+#   client_certificate     = base64decode("${dependency.k8s_ops.outputs.admin_client_certificate}")
+#   client_key             = base64decode("${dependency.k8s_ops.outputs.admin_client_key}")
+#   cluster_ca_certificate = base64decode("${dependency.k8s_ops.outputs.admin_cluster_ca_certificate}")
+#   }
+# }
 EOF
 }
 # ---------------------------------------------------------------------------------------------------------------------
