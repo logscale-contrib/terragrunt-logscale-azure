@@ -132,7 +132,180 @@ humio:
     entityID: ${local.humio_sso_entityID}
     idpCertificate: ${base64encode(local.humio_sso_idpCertificate)}
 
-azure
+  # Object Storage Settings
+  s3mode: s3proxy
+  s3proxy: 
+    secret: ops-s3proxy-secret
+    endpoint: http://ops-s3proxy
+  buckets:
+    region: us-east-1
+    storage: data
+
+  #Kafka
+  kafkaManager: strimzi
+  kafkaPrefixEnable: true
+  strimziCluster: "ops-logscale-strimzi-kafka"
+  externalKafkaHostname: "ops-logscale-strimzi-kafka-kafka-bootstrap:9092"
+
+  #Image is shared by all node pools
+  image:
+    tag: 1.70.0
+
+  # Primary Node pool used for digest/storage
+  nodeCount: 3
+  #In general for these node requests and limits should match
+  resources:
+    requests:
+      memory: 4Gi
+      cpu: 4
+    limits:
+      memory: 4Gi
+      cpu: 4
+
+  podAnnotations:
+    "config.linkerd.io/skip-outbound-ports": "443"
+    "instrumentation.opentelemetry.io/inject-java": "true"
+    "instrumentation.opentelemetry.io/container-names": "humio"
+  serviceAccount:
+    name: "logscale-ops"
+  tolerations:
+    - key: "workloadClass"
+      operator: "Equal"
+      value: "nvme"
+      effect: "NoSchedule"
+    - key: "node.kubernetes.io/disk-pressure"
+      operator: "Exists"
+      tolerationSeconds: 300
+      effect: "NoExecute"      
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: "kubernetes.io/arch"
+                operator: "In"
+                values: ["amd64"]
+              - key: "kubernetes.io/os"
+                operator: "In"
+                values: ["linux"]
+              - key: "kubernetes.azure.com/agentpool"
+                operator: "In"
+                values: ["nvme"]
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/instance
+                operator: In
+                values: ["ops-logscale"]
+              - key: humio.com/node-pool
+                operator: In
+                values: ["ops-logscale"]
+          topologyKey: "kubernetes.io/hostname"
+  dataVolumePersistentVolumeClaimSpecTemplate:
+    accessModes: ["ReadWriteOnce"]
+    resources:
+      requests:
+        storage: "1Ti"
+    storageClassName: "openebs-lvmpv"
+
+  ingress:
+    ui:
+      enabled: true
+      tls: true
+      annotations:
+        "external-dns.alpha.kubernetes.io/hostname": "logscale-ops.${local.domain_name}"
+        "kubernetes.io/ingress.class": "azure/application-gateway"
+        "cert-manager.io/cluster-issuer": "aag-letsencrypt"
+        "appgw.ingress.kubernetes.io/ssl-redirect": "true"
+          
+    inputs:
+      annotations:
+        "external-dns.alpha.kubernetes.io/hostname": "logscale-ops-inputs.${local.domain_name}"
+        "kubernetes.io/ingress.class": "azure/application-gateway"
+        "cert-manager.io/cluster-issuer": "aag-letsencrypt"
+        "appgw.ingress.kubernetes.io/ssl-redirect": "true"
+
+  nodepools:
+    ingest:
+      nodeCount: 2
+      resources:
+        limits:
+          cpu: "2"
+          memory: 3Gi
+        requests:
+          cpu: "2"
+          memory: 3Gi 
+      tolerations:
+          - key: "workloadClass"
+            operator: "Equal"
+            value: "nvme"
+            effect: "NoSchedule"
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: "kubernetes.io/arch"
+                    operator: "In"
+                    values: ["amd64"]
+                  - key: "kubernetes.io/os"
+                    operator: "In"
+                    values: ["linux"]
+                  - key: "kubernetes.azure.com/agentpool"
+                    operator: "In"
+                    values: ["compute"]
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/instance
+                    operator: In
+                    values: ["ops-logscale"]
+                  - key: humio.com/node-pool
+                    operator: In
+                    values: ["ops-logscale-ingest-only"]
+              topologyKey: "kubernetes.io/hostname"          
+
+    ui:
+      nodeCount: 2
+      resources:
+        limits:
+          cpu: "2"
+          memory: 3Gi
+        requests:
+          cpu: "2"
+          memory: 3Gi
+      tolerations:
+          - key: "workloadClass"
+            operator: "Equal"
+            value: "nvme"
+            effect: "NoSchedule"
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: "kubernetes.io/arch"
+                    operator: "In"
+                    values: ["amd64"]
+                  - key: "kubernetes.io/os"
+                    operator: "In"
+                    values: ["linux"]
+                  - key: "kubernetes.azure.com/agentpool"
+                    operator: "In"
+                    values: ["compute"]
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/instance
+                    operator: In
+                    values: ["ops-logscale"]
+                  - key: humio.com/node-pool
+                    operator: In
+                    values: ["ops-logscale-http-only"]
+              topologyKey: "kubernetes.io/hostname"
 EOF
   )
 
