@@ -68,12 +68,13 @@ inputs = {
   agent_size             = "Standard_B2s"
   agent_max              = 6
   agent_compute_size     = "Standard_D4as_v5"
+  agent_compute_min      = 0
   agent_compute_max      = 9
   agent_nvme_size        = "Standard_L8s_v3"
   #"Standard_L16s_v3"
   #"Standard_L8s_v3"
   #"Standard_L8as_v3"
-  agent_nvme_min = 3
+  agent_nvme_min = 0
   agent_nvme_max = 4
   tags           = local.tags
 }

@@ -59,10 +59,11 @@ dependency "ns" {
   config_path  = "${get_terragrunt_dir()}/../../logscale-ops-ns/"
   skip_outputs = true
 }
-dependency "argo" {
-  config_path  = "${get_terragrunt_dir()}/../../common/k8s-argocd/"
+dependency "project" {
+  config_path  = "${get_terragrunt_dir()}/../../logscale-ops-project/"
   skip_outputs = true
 }
+
 dependency "storage" {
   config_path = "${get_terragrunt_dir()}/../object-storage/"
 }

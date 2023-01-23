@@ -112,146 +112,28 @@ inputs = {
 
   release          = "ops"
   chart            = "logscale"
-  chart_version    = "4.0.0-next.2"
+  chart_version    = "4.0.7"
   namespace        = "logscale-ops"
   create_namespace = false
   project          = "logscale-ops"
 
-  values = {
-    platform = "azure"
-    humio = {
-      s3mode            = "s3proxy"
-      kafkaManager      = "strimzi"
-      kafkaPrefixEnable = true
-      strimziCluster    = "ops-logscale-strimzi-kafka"
-      fqdn              = "logscale-ops.${local.domain_name}"
-      fqdnInputs        = "logscale-ops-inputs.${local.domain_name}"
-      rootUser          = local.humio_rootUser
-      license           = local.humio_license
-      image = {
-        tag = "1.70.0--SNAPSHOT--build-323434--SHA-dfa77220c22755bc0f8dee124ef548e8c0d740b1"
-      }
-      sso = {
-        idpCertificate = local.humio_sso_idpCertificate
-        signOnUrl      = local.humio_sso_signOnUrl
-        entityID       = local.humio_sso_entityID
-      }
-      serviceAccount = {
-        name = "logscale-ops"
-      }
+  values = yamldecode(<<EOF
+humio:
+  # External URI
+  fqdn: "logscale-ops.${local.domain_name}"
+  fqdnInputs: "logscale-ops-inputs.${local.domain_name}"
 
-      buckets = {
-        region  = "us-east-1"
-        storage = "data"
-      }
-      podAnnotations = {
-        "config.linkerd.io/skip-outbound-ports" = "443"
-        #"sidecar.opentelemetry.io/inject": "true"
-        "instrumentation.opentelemetry.io/inject-java" : "true"
-        "instrumentation.opentelemetry.io/container-names" : "humio"
-      }
-      nodeCount = 3
-      resources = {
-        requests = {
-          memory = "4Gi"
-          cpu    = 4
-        }
-        limits = {
-          memory = "4Gi"
-          cpu    = 4
-        }
-      }
-      tolerations = [
-        { key      = "workloadClass"
-          operator = "Equal"
-          value    = "nvme"
-          effect   = "NoSchedule"
-        }
-      ]
-      affinity = {
-        nodeAffinity = {
-          requiredDuringSchedulingIgnoredDuringExecution = {
-            nodeSelectorTerms = [
-              {
-                matchExpressions = [
-                  {
-                    key      = "kubernetes.io/arch"
-                    operator = "In"
-                    values   = ["amd64"]
-                  },
-                  {
-                    key      = "kubernetes.io/os"
-                    operator = "In"
-                    values   = ["linux"]
-                  },
-                  {
-                    key      = "kubernetes.azure.com/agentpool"
-                    operator = "In"
-                    values   = ["nvme"]
-                  }
-                ]
-              }
-            ]
-          }
-        }
-        podAntiAffinity = {
-          requiredDuringSchedulingIgnoredDuringExecution = [
-            {
-              labelSelector = {
-                matchExpressions = [
-                  {
-                    key      = "app.kubernetes.io/instance"
-                    operator = "In"
-                    values = [
-                      "ops-humio-cluster"
-                    ]
-                  }
-                ]
-              }
-              topologyKey = "kubernetes.io/hostname"
-            }
-          ]
-        }
-      }
-      config = {
-        dataVolumePersistentVolumeClaimSpecTemplate = {
-          accessModes = [
-            "ReadWriteOnce"
-          ]
-          resources = {
-            requests = {
-              storage = "1Ti"
-            }
-          }
-          storageClassName = "openebs-lvmpv"
-        }
-      }
-      externalKafkaHostname = "ops-logscale-strimzi-kafka-kafka-bootstrap:9092"
-      service = {
-        type = "ClusterIP"
-      }
-      ingress = {
-        enabled = true
-        tls     = true
-        annotations = {
-          "external-dns.alpha.kubernetes.io/hostname" = "logscale-ops.${local.domain_name}"
-          "kubernetes.io/ingress.class"               = "azure/application-gateway"
-          "cert-manager.io/cluster-issuer"            = "aag-letsencrypt"
-          "appgw.ingress.kubernetes.io/ssl-redirect"  = "true"
-        }
-        annotationsInputs = {
-          "external-dns.alpha.kubernetes.io/hostname" = "logscale-ops-inputs.${local.domain_name}"
-          "kubernetes.io/ingress.class"               = "azure/application-gateway"
-          "cert-manager.io/cluster-issuer"            = "aag-letsencrypt"
-          "appgw.ingress.kubernetes.io/ssl-redirect"  = "true"
-        }
-        # className = "azure-application-gateway"
-      }
-    }
-    opentelemetryOperator = {
-      enabled = true
-    }
+  license: ${local.humio_license}
+  
+  # Signon
+  rootUser: ${local.humio_rootUser}
+  sso:
+    signOnUrl: ${local.humio_sso_signOnUrl}
+    entityID: ${local.humio_sso_entityID}
+    idpCertificate: ${base64encode(local.humio_sso_idpCertificate)}
 
+azure
+EOF
+  )
 
-  }
 }
