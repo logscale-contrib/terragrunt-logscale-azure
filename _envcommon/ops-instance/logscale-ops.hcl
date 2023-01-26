@@ -112,7 +112,7 @@ inputs = {
 
   release          = "ops"
   chart            = "logscale"
-  chart_version    = "4.0.7"
+  chart_version    = "5.0.0"
   namespace        = "logscale-ops"
   create_namespace = false
   project          = "logscale-ops"
@@ -142,11 +142,18 @@ humio:
     storage: data
 
   #Kafka
-  kafkaManager: strimzi
-  kafkaPrefixEnable: true
-  strimziCluster: "ops-logscale-strimzi-kafka"
-  externalKafkaHostname: "ops-logscale-strimzi-kafka-kafka-bootstrap:9092"
-
+  kafka:
+    manager: strimzi
+    prefixEnable: true
+    strimziCluster: "ops-logscale-strimzi-kafka"
+    externalKafkaHostname: "ops-logscale-strimzi-kafka-kafka-bootstrap:9092"
+    # extraConfig: |
+    #   sasl.jaas.config=org.apache.kafka.common.security.scram.ScramLoginModule required username="ops-kafka-user" password="XKZeXtSTGi2x";
+    #   sasl.mechanism=SCRAM-SHA-512
+    #   security.protocol=SASL_PLAINTEXT
+    # # extraConfig: "security.protocol=tls"
+    
+    
   #Image is shared by all node pools
   image:
     tag: 1.70.0
