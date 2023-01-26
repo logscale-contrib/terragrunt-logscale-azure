@@ -227,6 +227,8 @@ humio:
         "appgw.ingress.kubernetes.io/ssl-redirect": "true"
           
     inputs:
+      enabled: true
+      tls: true    
       annotations:
         "external-dns.alpha.kubernetes.io/hostname": "logscale-ops-inputs.${local.domain_name}"
         "kubernetes.io/ingress.class": "azure/application-gateway"
