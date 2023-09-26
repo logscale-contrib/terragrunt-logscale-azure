@@ -11,7 +11,7 @@
 # deployed version.
 
 terraform {
-  source = "${local.source_module.base_url}${local.source_module.version}"
+  source = "tfr:///kumarvna/storage/azurerm?version=2.5.0"
 }
 
 
@@ -19,9 +19,6 @@ terraform {
 # Locals are named constants that are reusable within the configuration.
 # ---------------------------------------------------------------------------------------------------------------------
 locals {
-  # Automatically load modules variables
-  module_vars   = read_terragrunt_config(find_in_parent_folders("modules.hcl"))
-  source_module = local.module_vars.locals.az_store
 
   # Automatically load environment-level variables
   environment_vars = read_terragrunt_config(find_in_parent_folders("env.hcl"))

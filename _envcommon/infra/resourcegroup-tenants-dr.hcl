@@ -11,7 +11,7 @@
 # deployed version.
 
 terraform {
-  source = "${local.source_module.base_url}${local.source_module.version}"
+  source = "github.com/logscale-contrib/teraform-self-managed-logscale-azure-resource-group.git?ref=v1.0.4"
 }
 
 
@@ -19,9 +19,7 @@ terraform {
 # Locals are named constants that are reusable within the configuration.
 # ---------------------------------------------------------------------------------------------------------------------
 locals {
-  # Automatically load modules variables
-  module_vars   = read_terragrunt_config(find_in_parent_folders("modules.hcl"))
-  source_module = local.module_vars.locals.rg
+
 
   # Automatically load environment-level variables
   environment_vars = read_terragrunt_config(find_in_parent_folders("env.hcl"))

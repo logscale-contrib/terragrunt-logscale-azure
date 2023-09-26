@@ -11,7 +11,7 @@
 # deployed version.
 
 terraform {
-  source = "${local.source_module.base_url}${local.source_module.version}"
+  source = "tfr:///segateway/akscluster/azurerm?version=2.2.9"
 }
 
 
@@ -19,9 +19,6 @@ terraform {
 # Locals are named constants that are reusable within the configuration.
 # ---------------------------------------------------------------------------------------------------------------------
 locals {
-  # Automatically load modules variables
-  module_vars   = read_terragrunt_config(find_in_parent_folders("modules.hcl"))
-  source_module = local.module_vars.locals.k8s
 
   # Automatically load environment-level variables
   environment_vars = read_terragrunt_config(find_in_parent_folders("env.hcl"))
@@ -47,9 +44,6 @@ dependency "rg_ops" {
 dependency "net_ops" {
   config_path = "${get_terragrunt_dir()}/../infra/network-ops/"
 }
-dependency "vault_ops" {
-  config_path = "${get_terragrunt_dir()}/../infra/vault-ops/"
-}
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -59,12 +53,12 @@ dependency "vault_ops" {
 # ---------------------------------------------------------------------------------------------------------------------
 inputs = {
   resource_group = dependency.rg_ops.outputs.resource_group_name
+  cluster_name = dependency.rg_ops.outputs.resource_group_name
   location       = dependency.rg_ops.outputs.resource_group_location
   subnet_id      = dependency.net_ops.outputs.virtual_subnet_id
 
   subnet_id_ag           = dependency.net_ops.outputs.virtual_subnet_id_ag
   prefix                 = "logscale-ops-${local.env}"
-  disk_encryption_set_id = dependency.vault_ops.outputs.disk_encryption_set_id
   agent_size             = "Standard_B2s"
   agent_max              = 6
   agent_compute_size     = "Standard_D4as_v5"
